@@ -1,3 +1,7 @@
+## Live Demo
+
+[Click here to try the live app](https://credit-card-fraud-detection-n9uafamqrwtja6zfad6lyg.streamlit.app)
+
 # Credit Card Fraud Detection
 
 This project tackles one of the most common and critical problems in the financial industry — detecting fraudulent credit card transactions. Using a real-world dataset from Kaggle, three machine learning models were built and compared to identify fraud accurately on a severely imbalanced dataset where only 0.17% of transactions are fraudulent.
@@ -72,7 +76,3 @@ Logistic Regression catches the highest number of fraud cases with an 87% recall
 V14 stands out as by far the most important feature with an importance score of 0.45 — nearly ten times higher than the next feature. This suggests one particular anonymised transaction pattern is the strongest signal for fraud in this dataset. Transaction Amount also appears in the top 15 features, which aligns with real-world fraud behaviour where amount is a natural risk indicator.
 
 Precision-Recall curves were prioritised over ROC-AUC for model evaluation because ROC can appear artificially strong on imbalanced datasets. The Precision-Recall AUC gives a more honest assessment of how well each model identifies the minority fraud class specifically.
-
----
-
-## Project Structure
