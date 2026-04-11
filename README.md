@@ -1,6 +1,10 @@
-## Live Demo
+## 🚀 Live Demo
 
-[Click here to try the live app](https://credit-card-fraud-detection-n9uafamqrwtja6zfad6lyg.streamlit.app)
+👉 [Click here to try the live app](https://credit-card-fraud-detection-n9uafamqrwtja6zfad6lyg.streamlit.app)
+
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://credit-card-fraud-detection-n9uafamqrwtja6zfad6lyg.streamlit.app)
+
+---
 
 # Credit Card Fraud Detection
 
