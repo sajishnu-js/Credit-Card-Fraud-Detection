@@ -1,5 +1,4 @@
 # Ignore datasets and models
-Preprocessed datasets/
 Dataset/
 creditcard.csv
 
