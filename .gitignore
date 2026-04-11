@@ -1,0 +1,20 @@
+# Ignore datasets and models
+Preprocessed datasets/
+Dataset/
+creditcard.csv
+
+# Ignore Python environments
+.venv/
+venv/
+env/
+
+# Ignore Python cache
+__pycache__/
+*.pyc
+
+# Ignore Jupyter
+.ipynb_checkpoints/
+
+# macOS files
+.DS_Store
+__MACOSX/
