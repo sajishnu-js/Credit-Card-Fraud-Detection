@@ -5,10 +5,21 @@ trained machine learning models (Logistic Regression, Random Forest, XGBoost) tr
 a real-world, severely imbalanced transaction dataset, and a Next.js/TypeScript frontend
 provides a dark, glassmorphic UI for scoring transactions one at a time or in bulk via CSV.
 
+## Live Demo
+
+| | URL |
+|---|---|
+| Console (frontend) | https://sentinel-fraud-console-dun.vercel.app |
+| Inference API | https://sentinel-fraud-api.vercel.app |
+
+Quick check: [`/health`](https://sentinel-fraud-api.vercel.app/health) returns the list of
+models the API has loaded.
+
 ---
 
 ## Table of Contents
 
+- [Live Demo](#live-demo)
 - [Overview](#overview)
 - [Features](#features)
 - [Tech Stack](#tech-stack)
@@ -83,8 +94,11 @@ trained models are served behind a REST API and consumed by a dedicated web cons
 
 ```
 .
-├── api.py                       # Flask REST API serving the trained models
-├── requirements.txt              # Backend Python dependencies
+├── api.py                         # Flask REST API serving the trained models
+├── server/index.py                # Vercel serverless entrypoint (re-exports api.app)
+├── vercel.json                    # Vercel build/route config for the API
+├── requirements.txt               # API runtime dependencies (pinned)
+├── requirements-notebooks.txt     # The above plus matplotlib/seaborn for the notebooks
 ├── Procfile                       # Production start command (gunicorn) for PaaS deploys
 ├── Saved Model/                   # Trained model artifacts (.pkl)
 │   ├── LogisticRegression.pkl
@@ -213,8 +227,13 @@ honest assessment of how well each model identifies the minority fraud class spe
 ```bash
 python3 -m venv venv
 source venv/bin/activate        # Windows: venv\Scripts\activate
-pip install -r requirements.txt
+pip install -r requirements.txt          # API only
+# pip install -r requirements-notebooks.txt   # ...or this, to also run the notebooks
 ```
+
+Versions in `requirements.txt` are pinned deliberately: the committed `.pkl` artifacts were
+trained with scikit-learn 1.8.0, and unpickling them under a different minor version raises
+`InconsistentVersionWarning` and is not guaranteed to stay correct.
 
 ### Frontend setup
 
@@ -229,7 +248,11 @@ cp .env.local.example .env.local   # adjust NEXT_PUBLIC_API_URL if needed
 | Variable | Where | Default | Purpose |
 |---|---|---|---|
 | `PORT` | backend (`api.py`) | `5001` | Port the Flask API listens on |
+| `ALLOWED_ORIGINS` | backend (`api.py`) | `*` | Comma-separated origins allowed by CORS. Leave unset locally; set to your frontend origin in production |
 | `NEXT_PUBLIC_API_URL` | frontend (`frontend/.env.local`) | `http://127.0.0.1:5001` | Base URL the frontend calls for `/health`, `/predict`, `/predict_batch` |
+
+`NEXT_PUBLIC_*` variables are inlined at build time, so changing `NEXT_PUBLIC_API_URL` on
+Vercel requires a **redeploy** — updating the variable alone will not change a built site.
 
 `frontend/.env.local` is git-ignored; `frontend/.env.local.example` documents the expected
 shape and is safe to commit.
@@ -290,30 +313,73 @@ This is also codified in the root `Procfile` for platforms that read it automati
 
 ## Deployment
 
-**Backend** — deploy `api.py` to any host that can run a Python/Gunicorn process (Render,
-Railway, Fly.io, a VPS, etc.):
+Both halves run on Vercel as two separate projects against this one repo.
 
-1. Install dependencies from `requirements.txt`.
-2. Ensure `Saved Model/*.pkl` and `Preprocessed datasets/scaler.pkl` are present in the
-   deployed filesystem (they're committed to this repo, so a normal deploy includes them).
-3. Start with `gunicorn api:app --bind 0.0.0.0:$PORT` (see `Procfile`).
-4. Note the public URL of the deployed API.
+| Project | What it serves | Deploy from |
+|---|---|---|
+| `sentinel-fraud-console` | Next.js console | `frontend/` |
+| `sentinel-fraud-api` | Flask API as a Python function | repo root |
 
-By default `flask-cors` is configured to allow all origins (`CORS(app)` in `api.py`), which
-is convenient for getting started but permissive. For a stricter production setup, restrict
-it to your deployed frontend's origin, e.g. `CORS(app, origins=["https://your-frontend.example.com"])`.
+### Backend (`sentinel-fraud-api`)
 
-**Frontend** — deploy `frontend/` to [Vercel](https://vercel.com/) (or any Next.js-capable
-host):
+`vercel.json` builds `server/index.py` with `@vercel/python`, routes every path to it, and
+uses `includeFiles` to ship `Saved Model/**` and `Preprocessed datasets/**` into the bundle.
+`server/index.py` only puts the repo root on `sys.path` and re-exports `api.app`, so
+`python api.py` and `gunicorn api:app` keep working unchanged.
 
-1. Import the repository, set the project root to `frontend/`.
-2. Set the `NEXT_PUBLIC_API_URL` environment variable to your deployed backend's URL.
-3. Deploy — Vercel runs `npm run build` automatically.
+Two constraints worth knowing before changing `requirements.txt`:
+
+- **Bundle size.** A Vercel function is capped at 250 MB unzipped. The default `xgboost`
+  wheel bundles GPU support (~58 MB compressed) and pushes the bundle over the cap, so
+  Linux installs use `xgboost-cpu` via an environment marker. `matplotlib`/`seaborn` are
+  notebook-only and deliberately kept out of `requirements.txt` for the same reason.
+- **Cold starts.** Importing scikit-learn and loading the Random Forest takes a second or
+  so on a cold function; warm requests return in well under a second.
+
+Set `ALLOWED_ORIGINS` on the project to your console's origin, then deploy:
+
+```bash
+cd <repo root>
+vercel deploy --prod
+```
+
+The API is not tied to Vercel — it is a plain WSGI app. Any host that can run
+`gunicorn api:app --bind 0.0.0.0:$PORT` (Render, Railway, Fly.io, a VPS) works, and the
+root `Procfile` already codifies that command.
+
+### Frontend (`sentinel-fraud-console`)
+
+Set `NEXT_PUBLIC_API_URL` to the API's URL, then deploy **from `frontend/`**:
+
+```bash
+cd frontend
+vercel deploy --prod
+```
+
+> **Deploy from `frontend/`, not the repo root.** The Vercel CLI reads `vercel.json` from
+> the directory you invoke it in. Running `vercel` at the repo root picks up the *API's*
+> `vercel.json` and routes the whole site to the Python function, which serves 404s for
+> every page. The console project is therefore configured with an empty Root Directory.
+
+### Connecting Git (optional)
+
+Neither project is linked to GitHub yet, so deploys are manual. To get a deploy on every
+push, install the [Vercel GitHub App](https://github.com/apps/vercel) on the repo and run
+`vercel git connect` in each project. When you do, set the console project's **Root
+Directory** to `frontend` in its settings — with Git, Vercel resolves `vercel.json`
+relative to the Root Directory, so the two projects stop colliding.
 
 ## Troubleshooting
 
 - **XGBoost fails to load on macOS** (`libomp.dylib` error): run `brew install libomp`.
 - **Port 5000 already in use on macOS**: that's AirPlay Receiver — this project already
   defaults the API to port 5001 to avoid the conflict.
-- **Frontend shows "API offline"**: confirm the backend is running and that
-  `NEXT_PUBLIC_API_URL` in `frontend/.env.local` matches its actual address/port.
+- **Frontend shows "API offline"**: locally, confirm the backend is running and that
+  `NEXT_PUBLIC_API_URL` in `frontend/.env.local` matches its actual address/port. On a
+  deployed site, check three things in order: that `NEXT_PUBLIC_API_URL` is set on the
+  project *and the site was redeployed afterwards* (the value is inlined at build time);
+  that the API's `ALLOWED_ORIGINS` includes the console's origin, otherwise the browser
+  blocks the response even though the request succeeds; and that the API URL is `https`,
+  since an `https` page cannot call an `http` API.
+- **Every frontend route 404s after a deploy**: you deployed from the repo root instead of
+  `frontend/`, so the API's `vercel.json` took over. Redeploy from `frontend/`.

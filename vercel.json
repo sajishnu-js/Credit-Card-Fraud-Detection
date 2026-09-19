@@ -1,0 +1,16 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "builds": [
+    {
+      "src": "server/index.py",
+      "use": "@vercel/python",
+      "config": {
+        "maxLambdaSize": "250mb",
+        "includeFiles": "{Saved Model/**,Preprocessed datasets/**,api.py}"
+      }
+    }
+  ],
+  "routes": [
+    { "src": "/(.*)", "dest": "server/index.py" }
+  ]
+}

@@ -1,0 +1,5 @@
+# Everything the API needs, plus the plotting stack used by the notebooks.
+-r requirements.txt
+
+matplotlib==3.11.2
+seaborn==0.13.2

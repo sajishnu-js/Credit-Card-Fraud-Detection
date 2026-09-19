@@ -31,18 +31,30 @@ import joblib
 import os
 
 app = Flask(__name__)
-CORS(app)
+
+# Allow every origin by default so local development and the bundled frontend
+# work out of the box. In production set ALLOWED_ORIGINS to a comma-separated
+# list of frontend origins, e.g. "https://sentinel-fraud-console.vercel.app".
+_allowed = os.environ.get('ALLOWED_ORIGINS', '*').strip()
+if _allowed and _allowed != '*':
+    CORS(app, origins=[o.strip() for o in _allowed.split(',') if o.strip()])
+else:
+    CORS(app)
 
 FEATURE_COLUMNS = (
     ['Time'] + [f'V{i}' for i in range(1, 29)] + ['Amount']
 )
 
+# Resolve artifacts relative to this file, not the working directory, so the
+# API works under gunicorn, a serverless handler, or `python api.py` alike.
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 MODEL_PATHS = {
-    'logistic_regression': 'Saved Model/LogisticRegression.pkl',
-    'random_forest': 'Saved Model/RandomForest.pkl',
-    'xgboost': 'Saved Model/XGBoost.pkl',
+    'logistic_regression': os.path.join(BASE_DIR, 'Saved Model', 'LogisticRegression.pkl'),
+    'random_forest': os.path.join(BASE_DIR, 'Saved Model', 'RandomForest.pkl'),
+    'xgboost': os.path.join(BASE_DIR, 'Saved Model', 'XGBoost.pkl'),
 }
-SCALER_PATH = 'Preprocessed datasets/scaler.pkl'
+SCALER_PATH = os.path.join(BASE_DIR, 'Preprocessed datasets', 'scaler.pkl')
 
 models = {}
 scaler = None

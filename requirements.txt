@@ -1,10 +1,22 @@
-pandas
-numpy
-scikit-learn
-xgboost
-matplotlib
-seaborn
-joblib
-flask
-flask-cors
-gunicorn
+# Runtime dependencies for the inference API (api.py).
+#
+# Versions are pinned because the committed .pkl artifacts were trained with
+# scikit-learn 1.8.0 — unpickling them under a different minor version raises
+# InconsistentVersionWarning and is not guaranteed to stay correct.
+# For the notebooks, install requirements-notebooks.txt instead.
+
+flask==3.1.3
+flask-cors==6.0.5
+gunicorn==26.2.0
+
+joblib==1.6.0
+numpy==2.5.3
+scipy==1.18.1
+scikit-learn==1.8.0
+pandas==3.0.6
+
+# The default xgboost wheel bundles GPU support and is ~58 MB compressed, which
+# blows the serverless bundle limit. xgboost-cpu is the same library without it,
+# but is only published for Linux/Windows — macOS wheels are already CPU-only.
+xgboost-cpu==3.4.1; platform_system == "Linux" or platform_system == "Windows"
+xgboost==3.4.1; platform_system == "Darwin"
