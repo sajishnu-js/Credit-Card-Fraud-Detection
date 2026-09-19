@@ -10,10 +10,36 @@ env/
 # Ignore Python cache
 __pycache__/
 *.pyc
+*.pyo
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
 
 # Ignore Jupyter
 .ipynb_checkpoints/
 
+# Environment variables / secrets (backend and any future config)
+# The frontend has its own .gitignore for frontend/.env*
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+logs/
+
 # macOS files
 .DS_Store
 __MACOSX/
+
+# Windows files
+Thumbs.db
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+
+# Note: frontend/ has its own .gitignore covering node_modules, .next,
+# build output, and frontend/.env* — see frontend/.gitignore
