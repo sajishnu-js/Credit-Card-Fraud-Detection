@@ -115,6 +115,7 @@ trained models are served behind a REST API and consumed by a dedicated web cons
     │   ├── hooks/                 # use-health (backend status polling)
     │   └── lib/                   # api client, constants, csv helpers, model metadata
     ├── public/
+    ├── vercel.json                 # Keeps the API's root config from hijacking this build
     ├── .env.local                 # Local env config (not committed)
     ├── .env.local.example         # Template for required env vars
     └── package.json
@@ -352,25 +353,29 @@ root `Procfile` already codifies that command.
 
 ### Frontend (`sentinel-fraud-console`)
 
-Set `NEXT_PUBLIC_API_URL` to the API's URL, then deploy **from `frontend/`**:
+Project settings: **Root Directory** `frontend`, framework Next.js, and
+`NEXT_PUBLIC_API_URL` pointing at the API.
+
+> **`frontend/vercel.json` must exist — do not delete it.** Vercel resolves `vercel.json`
+> from the repo root whenever the configured Root Directory doesn't contain one. The API's
+> root `vercel.json` uses the legacy `builds` key, and `builds` overrides a project's Build
+> and Development Settings *entirely* — Root Directory and framework included. Without its
+> own `vercel.json`, the console builds with the Python builder, emits no static output,
+> and serves 404s on every route while still reporting a successful build. The file only
+> needs to declare `"framework": "nextjs"`; its presence is the point.
+
+### Deploys
+
+Both projects are connected to GitHub, so pushing to `main` deploys both: the console from
+`frontend/`, the API from the repo root. Watch the Vercel dashboard for the two builds.
+
+To deploy by hand instead, run the CLI from the directory matching each project's Root
+Directory — `frontend/` for the console, the repo root for the API:
 
 ```bash
-cd frontend
-vercel deploy --prod
+cd frontend && vercel deploy --prod     # console
+cd ..       && vercel deploy --prod     # API
 ```
-
-> **Deploy from `frontend/`, not the repo root.** The Vercel CLI reads `vercel.json` from
-> the directory you invoke it in. Running `vercel` at the repo root picks up the *API's*
-> `vercel.json` and routes the whole site to the Python function, which serves 404s for
-> every page. The console project is therefore configured with an empty Root Directory.
-
-### Connecting Git (optional)
-
-Neither project is linked to GitHub yet, so deploys are manual. To get a deploy on every
-push, install the [Vercel GitHub App](https://github.com/apps/vercel) on the repo and run
-`vercel git connect` in each project. When you do, set the console project's **Root
-Directory** to `frontend` in its settings — with Git, Vercel resolves `vercel.json`
-relative to the Root Directory, so the two projects stop colliding.
 
 ## Troubleshooting
 
@@ -384,5 +389,8 @@ relative to the Root Directory, so the two projects stop colliding.
   that the API's `ALLOWED_ORIGINS` includes the console's origin, otherwise the browser
   blocks the response even though the request succeeds; and that the API URL is `https`,
   since an `https` page cannot call an `http` API.
-- **Every frontend route 404s after a deploy**: you deployed from the repo root instead of
-  `frontend/`, so the API's `vercel.json` took over. Redeploy from `frontend/`.
+- **Every frontend route 404s but the build reported success**: the console picked up the
+  API's root `vercel.json`. Check the build log for `Due to 'builds' existing in your
+  configuration file...` and a build that finished suspiciously fast (milliseconds, with
+  `Build output contains no "functions", "static", or "services" directory`). Confirm
+  `frontend/vercel.json` still exists.
