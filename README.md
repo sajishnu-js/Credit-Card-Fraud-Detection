@@ -333,8 +333,11 @@ Two constraints worth knowing before changing `requirements.txt`:
   wheel bundles GPU support (~58 MB compressed) and pushes the bundle over the cap, so
   Linux installs use `xgboost-cpu` via an environment marker. `matplotlib`/`seaborn` are
   notebook-only and deliberately kept out of `requirements.txt` for the same reason.
-- **Cold starts.** Importing scikit-learn and loading the Random Forest takes a second or
-  so on a cold function; warm requests return in well under a second.
+- **Cold starts.** Importing scikit-learn and loading the Random Forest is slow on a cold
+  function: measured ~7.5s for the first request after the function had been idle
+  overnight. Warm requests return in ~0.6s. If that first-hit latency matters, put the API
+  on an always-on host instead — `gunicorn api:app` runs anywhere, and the `Procfile`
+  already codifies it.
 
 Set `ALLOWED_ORIGINS` on the project to your console's origin, then deploy:
 
